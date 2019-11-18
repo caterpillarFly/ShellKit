@@ -1,0 +1,15 @@
+#!/bin/sh
+
+result=($(find . -name "*.xcworkspace" -depth 1))
+for file in ${result[@]}
+do
+	xed $file
+	exit
+done
+
+result=($(find . -name "*.xcodeproj" -depth 1))
+for file in ${result[@]}
+do
+	xed $file
+	exit
+done

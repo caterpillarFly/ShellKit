@@ -1,0 +1,84 @@
+#!/bin/sh
+
+if [ ! $1 ];then
+    echo "没有传入路径"
+    exit 1;
+elif [ ! $2 ];then
+    echo "没有指定查找的方法名"
+    exit 1;
+fi
+
+function findMethod()
+{
+    dirpath="$1"
+    method="$2"
+
+    findLibraryMethod $dirpath $method
+    findFrameworkMethod $dirpath $method
+
+    projectName="$3"
+    if [ -n "$projectName"]; then
+        findPodMethod $projectName $method
+    fi
+}
+
+function findLibraryMethod()
+{
+    dirpath="$1"
+    method="$2"
+
+    result=($(find $dirpath -name "*.a"))
+    #1、找工程里的.a文件
+    for filename in ${result[@]}  
+    do  
+        text=`nm -A $filename | grep $method`
+        if [ -n "$text" ]; then
+            echo $text
+            #return
+        fi
+    done
+}
+
+function findFrameworkMethod()
+{
+    dirpath="$1"
+    method="$2"
+    sourceDir=`pwd`
+
+    #2、找工程里的.framework文件
+    result=($(find $dirpath -name "*.framework"))
+    for filename in ${result[@]}
+    do  
+        cd $sourceDir
+        cd $filename
+        filename="${filename##*/}"
+        filename="${filename%.*}"
+    
+        if [ -f $filename ];then
+            text=`nm -A $filename -arch arm64 | grep $method`
+            if [ -n "$text" ]; then 
+                echo $text
+                #return
+            fi
+        fi
+    done
+}
+
+function findPodMethod()
+{
+    projectName="$1"
+    method="$2"
+    #3、找pod对应的.a文件
+    cd "$HOME/Library/Developer/Xcode/DerivedData"
+    podDir=`pwd`
+    result=($(find $podDir -name "$projectName*" -depth 1))
+    
+    for mgPodDir in ${result[@]}
+    do
+        cd $mgPodDir
+        findLibraryMethod $mgPodDir $method
+        findFrameworkMethod $mgPodDir $method
+    done
+}
+
+findMethod $1 $2 $3
